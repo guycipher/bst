@@ -25,11 +25,11 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestBST_Insert(t *testing.T) {
+func TestBST_Put(t *testing.T) {
 	bst := New()
-	bst.Insert([]byte("key"), []byte("value"))
-	bst.Insert([]byte("key44"), []byte("value"))
-	bst.Insert([]byte("key2"), []byte("value"))
+	bst.Put([]byte("key"), []byte("value"))
+	bst.Put([]byte("key44"), []byte("value"))
+	bst.Put([]byte("key2"), []byte("value"))
 
 	//bst.Print()
 }
