@@ -149,3 +149,109 @@ func TestBST_Range(t *testing.T) {
 		}
 	}
 }
+
+func TestBST_GreaterThan(t *testing.T) {
+	bst := New()
+
+	for i := 0; i < 10; i++ {
+		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte(fmt.Sprintf("value%d", i)))
+	}
+
+	keys := bst.GreaterThan([]byte("key05"))
+
+	for _, key := range keys {
+		fmt.Println(string(key.K))
+	}
+
+	expect := []string{"key06", "key07", "key08", "key09"}
+
+	for i, key := range keys {
+		if string(key.K) != expect[i] {
+			t.Fatalf("expected %s, got %s", expect[i], string(key.K))
+		}
+	}
+}
+
+func TestBST_GreaterThanEq(t *testing.T) {
+	bst := New()
+
+	for i := 0; i < 10; i++ {
+		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte(fmt.Sprintf("value%d", i)))
+	}
+
+	keys := bst.GreaterThanEq([]byte("key05"))
+
+	for _, key := range keys {
+		fmt.Println(string(key.K))
+	}
+
+	expect := []string{"key05", "key06", "key07", "key08", "key09"}
+
+	for i, key := range keys {
+		if string(key.K) != expect[i] {
+			t.Fatalf("expected %s, got %s", expect[i], string(key.K))
+		}
+	}
+}
+
+func TestBST_LessThan(t *testing.T) {
+	bst := New()
+
+	for i := 0; i < 10; i++ {
+		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte(fmt.Sprintf("value%d", i)))
+	}
+
+	keys := bst.LessThan([]byte("key05"))
+
+	for _, key := range keys {
+		fmt.Println(string(key.K))
+	}
+
+	expect := []string{"key00", "key01", "key02", "key03", "key04"}
+
+	for i, key := range keys {
+		if string(key.K) != expect[i] {
+			t.Fatalf("expected %s, got %s", expect[i], string(key.K))
+		}
+	}
+}
+
+func TestBST_LessThanEq(t *testing.T) {
+	bst := New()
+
+	for i := 0; i < 10; i++ {
+		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte(fmt.Sprintf("value%d", i)))
+	}
+
+	keys := bst.LessThanEq([]byte("key05"))
+
+	for _, key := range keys {
+		fmt.Println(string(key.K))
+	}
+
+	expect := []string{"key00", "key01", "key02", "key03", "key04", "key05"}
+
+	for i, key := range keys {
+		if string(key.K) != expect[i] {
+			t.Fatalf("expected %s, got %s", expect[i], string(key.K))
+		}
+	}
+}
+
+func TestBST_NGet(t *testing.T) {
+	bst := New()
+
+	for i := 0; i < 10; i++ {
+		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte(fmt.Sprintf("value%d", i)))
+	}
+
+	keys := bst.NGet([]byte("key05"))
+
+	expect := []string{"key00", "key01", "key02", "key03", "key04", "key06", "key07", "key08", "key09"}
+
+	for i, key := range keys {
+		if string(key.K) != expect[i] {
+			t.Fatalf("expected %s, got %s", expect[i], string(key.K))
+		}
+	}
+}

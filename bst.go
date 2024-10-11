@@ -226,6 +226,153 @@ func (bst *BST) rangeKeys(node *Node, start, end []byte, keys *[]*Key) {
 	}
 }
 
+// GreaterThan retrieves all keys greater than the specified key
+func (bst *BST) GreaterThan(key []byte) []*Key {
+	var keys []*Key
+	root := atomic.LoadPointer(&bst.Root)
+	bst.greaterThan((*Node)(root), key, &keys)
+	return keys
+}
+
+// greaterThan is a helper function to find keys greater than the specified key
+func (bst *BST) greaterThan(node *Node, key []byte, keys *[]*Key) {
+	if node == nil {
+		return
+	}
+
+	// If the current node's key is greater than the specified key,
+	// we need to check the left subtree first (for potentially smaller keys)
+	if bytes.Compare(node.Key.K, key) > 0 {
+		bst.greaterThan((*Node)(node.Left), key, keys)
+
+		// Since the current node's key is greater, add it to the keys slice
+		*keys = append(*keys, node.Key)
+
+		// Continue searching in the right subtree for more keys
+		bst.greaterThan((*Node)(node.Right), key, keys)
+	} else {
+		// If the current node's key is not greater, only search in the right subtree
+		bst.greaterThan((*Node)(node.Right), key, keys)
+	}
+}
+
+// GreaterThanEq retrieves all keys greater than or equal to the specified key
+func (bst *BST) GreaterThanEq(key []byte) []*Key {
+	var keys []*Key
+	root := atomic.LoadPointer(&bst.Root)
+	bst.greaterThanEq((*Node)(root), key, &keys)
+	return keys
+}
+
+// greaterThanEq is a helper function to find keys greater than or equal to the specified key
+func (bst *BST) greaterThanEq(node *Node, key []byte, keys *[]*Key) {
+	if node == nil {
+		return
+	}
+
+	// If the current node's key is greater than or equal to the specified key,
+	// we need to check the left subtree first (for potentially smaller keys)
+	if bytes.Compare(node.Key.K, key) >= 0 {
+		// Include the current node's key
+		*keys = append(*keys, node.Key)
+
+		// Continue searching in the left subtree for more keys
+		bst.greaterThanEq((*Node)(node.Left), key, keys)
+
+		// Search in the right subtree for additional greater keys
+		bst.greaterThanEq((*Node)(node.Right), key, keys)
+	} else {
+		// If the current node's key is less than the specified key, only search in the right subtree
+		bst.greaterThanEq((*Node)(node.Right), key, keys)
+	}
+}
+
+// LessThan retrieves all keys less than the specified key
+func (bst *BST) LessThan(key []byte) []*Key {
+	var keys []*Key
+	root := atomic.LoadPointer(&bst.Root)
+	bst.lessThan((*Node)(root), key, &keys)
+	return keys
+}
+
+// lessThan is a helper function to find keys less than the specified key
+func (bst *BST) lessThan(node *Node, key []byte, keys *[]*Key) {
+	if node == nil {
+		return
+	}
+
+	// If the current node's key is less than the specified key,
+	// we need to check the left subtree first (for potentially smaller keys)
+	if bytes.Compare(node.Key.K, key) < 0 {
+		*keys = append(*keys, node.Key)
+
+		// Continue searching in the left subtree
+		bst.lessThan((*Node)(node.Left), key, keys)
+
+		// Search in the right subtree for more keys that might also be less
+		bst.lessThan((*Node)(node.Right), key, keys)
+	} else {
+		// If the current node's key is not less, only search in the left subtree
+		bst.lessThan((*Node)(node.Left), key, keys)
+	}
+}
+
+// LessThanEq retrieves all keys less than or equal to the specified key
+func (bst *BST) LessThanEq(key []byte) []*Key {
+	var keys []*Key
+	root := atomic.LoadPointer(&bst.Root)
+	bst.lessThanEq((*Node)(root), key, &keys)
+	return keys
+}
+
+// lessThanEq is a helper function to find keys less than or equal to the specified key
+func (bst *BST) lessThanEq(node *Node, key []byte, keys *[]*Key) {
+	if node == nil {
+		return
+	}
+
+	// If the current node's key is less than or equal to the specified key,
+	// we need to check the left subtree first (for potentially smaller keys)
+	if bytes.Compare(node.Key.K, key) <= 0 {
+		*keys = append(*keys, node.Key)
+
+		// Continue searching in the left subtree
+		bst.lessThanEq((*Node)(node.Left), key, keys)
+
+		// Search in the right subtree for more keys that might also be less than or equal
+		bst.lessThanEq((*Node)(node.Right), key, keys)
+	} else {
+		// If the current node's key is greater, only search in the left subtree
+		bst.lessThanEq((*Node)(node.Left), key, keys)
+	}
+}
+
+// NGet retrieves all keys except the specified key
+func (bst *BST) NGet(key []byte) []*Key {
+	var keys []*Key
+	root := atomic.LoadPointer(&bst.Root)
+	bst.nGet((*Node)(root), key, &keys)
+	return keys
+}
+
+// nGet is a helper function to find all keys except the specified key
+func (bst *BST) nGet(node *Node, key []byte, keys *[]*Key) {
+	if node == nil {
+		return
+	}
+
+	// Check the left subtree first
+	bst.nGet((*Node)(node.Left), key, keys)
+
+	// If the current node's key does not match the specified key, add it to the keys slice
+	if bytes.Compare(node.Key.K, key) != 0 {
+		*keys = append(*keys, node.Key)
+	}
+
+	// Check the right subtree
+	bst.nGet((*Node)(node.Right), key, keys)
+}
+
 type NodePos int
 
 const (
