@@ -64,6 +64,7 @@ func (bst *BST) Put(key, value []byte) {
 	}
 }
 
+// put adds a new key to BST or append value to existing key
 func (bst *BST) put(rootPointer unsafe.Pointer, newNode *Node) bool {
 	root := (*Node)(rootPointer)
 
@@ -96,6 +97,133 @@ func (bst *BST) put(rootPointer unsafe.Pointer, newNode *Node) bool {
 		return true
 	}
 	return false
+}
+
+// Get retrieves a key from the BST
+func (bst *BST) Get(key []byte) *Key {
+	root := atomic.LoadPointer(&bst.Root)
+	return bst.get((*Node)(root), key)
+}
+
+// get retrieves a key from the BST
+func (bst *BST) get(node *Node, key []byte) *Key {
+	if node == nil {
+		return nil
+	}
+
+	if bytes.Compare(key, node.Key.K) < 0 {
+		return bst.get((*Node)(node.Left), key)
+	} else if bytes.Compare(key, node.Key.K) > 0 {
+		return bst.get((*Node)(node.Right), key)
+	}
+
+	return node.Key
+}
+
+// Remove removes a value from a key
+func (bst *BST) Remove(key, value []byte) {
+	root := atomic.LoadPointer(&bst.Root)
+	bst.remove((*Node)(root), key, value)
+}
+
+// remove removes a value from a key
+func (bst *BST) remove(node *Node, key, value []byte) {
+	if node == nil {
+		return
+	}
+
+	if bytes.Compare(key, node.Key.K) < 0 {
+		bst.remove((*Node)(node.Left), key, value)
+	} else if bytes.Compare(key, node.Key.K) > 0 {
+		bst.remove((*Node)(node.Right), key, value)
+	} else {
+		node.Key.Latch.Lock()
+		for i, v := range node.Key.Values {
+			if bytes.Compare(v, value) == 0 {
+				node.Key.Values = append(node.Key.Values[:i], node.Key.Values[i+1:]...)
+				break
+			}
+		}
+		node.Key.Latch.Unlock()
+	}
+}
+
+// Delete removes a key from the BST
+func (bst *BST) Delete(key []byte) {
+	root := (*Node)(atomic.LoadPointer(&bst.Root))
+	newRoot := bst.delete(root, key)
+	atomic.StorePointer(&bst.Root, unsafe.Pointer(newRoot))
+}
+
+// delete removes a node from the BST
+func (bst *BST) delete(node *Node, key []byte) *Node {
+	if node == nil {
+		return nil
+	}
+
+	if bytes.Compare(key, node.Key.K) < 0 {
+		node.Left = unsafe.Pointer(bst.delete((*Node)(node.Left), key))
+	} else if bytes.Compare(key, node.Key.K) > 0 {
+		node.Right = unsafe.Pointer(bst.delete((*Node)(node.Right), key))
+	} else {
+		// node with only one child or no child
+		if node.Left == nil {
+			return (*Node)(node.Right)
+		} else if node.Right == nil {
+			return (*Node)(node.Left)
+		}
+
+		// node with two children: get the inorder successor (smallest in the right subtree)
+		minNode := bst.minValueNode((*Node)(node.Right))
+
+		// copy the inorder successor's content to this node
+		node.Key = minNode.Key
+
+		// delete the inorder successor
+		node.Right = unsafe.Pointer(bst.delete((*Node)(node.Right), minNode.Key.K))
+	}
+	return node
+}
+
+// minValueNode gets the node with minimum key value found in that tree. The tree argument is pointer to the root node of the tree.
+func (bst *BST) minValueNode(node *Node) *Node {
+	current := node
+
+	// loop down to find the leftmost leaf
+	for (*Node)(current.Left) != nil {
+		current = (*Node)(current.Left)
+	}
+	return current
+}
+
+// Range retrieves all keys within a range
+func (bst *BST) Range(start, end []byte) []*Key {
+	var keys []*Key
+	root := atomic.LoadPointer(&bst.Root)
+	bst.rangeKeys((*Node)(root), start, end, &keys)
+	return keys
+}
+
+// rangeKeys retrieves all keys within a range
+func (bst *BST) rangeKeys(node *Node, start, end []byte, keys *[]*Key) {
+	if node == nil {
+		return
+	}
+
+	// If the current node's key is greater than the start key, then there might be keys in the left subtree that are in the range
+	if bytes.Compare(node.Key.K, start) > 0 {
+		bst.rangeKeys((*Node)(node.Left), start, end, keys)
+	}
+
+	// If the current node's key is within the range, add it to the keys slice
+	if bytes.Compare(node.Key.K, start) >= 0 && bytes.Compare(node.Key.K, end) <= 0 {
+		*keys = append(*keys, node.Key)
+	}
+
+	// If the current node's key is less than the end key, then there might be keys in the right subtree that are in the range
+	if bytes.Compare(node.Key.K, end) < 0 {
+		bst.rangeKeys((*Node)(node.Right), start, end, keys)
+	}
 }
 
 type NodePos int
