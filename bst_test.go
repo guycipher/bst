@@ -15,3 +15,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package bst
+
+import "testing"
+
+func TestNew(t *testing.T) {
+	bst := New()
+	if bst == nil {
+		t.Fatal("bst is nil")
+	}
+}
+
+func TestBST_Insert(t *testing.T) {
+	bst := New()
+	bst.Insert([]byte("key"), []byte("value"))
+	bst.Insert([]byte("key44"), []byte("value"))
+	bst.Insert([]byte("key2"), []byte("value"))
+
+	//bst.Print()
+}
