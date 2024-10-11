@@ -17,7 +17,9 @@
 package bst
 
 import (
+	"flag"
 	"fmt"
+	"sync"
 	"testing"
 )
 
@@ -254,4 +256,222 @@ func TestBST_NGet(t *testing.T) {
 			t.Fatalf("expected %s, got %s", expect[i], string(key.K))
 		}
 	}
+}
+
+func TestBST_ConcurrentPut(t *testing.T) {
+	bst := New()
+	var wg sync.WaitGroup
+	numGoroutines := 10
+	keysPerGoroutine := 10
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(goroutineID int) {
+			defer wg.Done()
+			for j := 0; j < keysPerGoroutine; j++ {
+				key := fmt.Sprintf("key%02d-%d", j, goroutineID)
+				value := fmt.Sprintf("value-%d", goroutineID)
+				bst.Put([]byte(key), []byte(value))
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Verify that all keys were inserted
+	for i := 0; i < numGoroutines; i++ {
+		for j := 0; j < keysPerGoroutine; j++ {
+			key := fmt.Sprintf("key%02d-%d", j, i)
+			val := bst.Get([]byte(key))
+			if val == nil {
+				t.Fatalf("Expected key %s not found", key)
+			}
+		}
+	}
+}
+
+func TestBST_ConcurrentGet(t *testing.T) {
+	bst := New()
+	var wg sync.WaitGroup
+	numGoroutines := 10
+	keysPerGoroutine := 10
+
+	// Pre-fill the tree
+	for i := 0; i < numGoroutines; i++ {
+		for j := 0; j < keysPerGoroutine; j++ {
+			key := fmt.Sprintf("key%02d-%d", j, i)
+			bst.Put([]byte(key), []byte(fmt.Sprintf("value-%d", i)))
+		}
+	}
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(goroutineID int) {
+			defer wg.Done()
+			for j := 0; j < keysPerGoroutine; j++ {
+				key := fmt.Sprintf("key%02d-%d", j, goroutineID)
+				val := bst.Get([]byte(key))
+				if val == nil {
+					t.Fatalf("Expected key %s not found", key)
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+func TestBST_ConcurrentDelete(t *testing.T) {
+	bst := New()
+	var wg sync.WaitGroup
+	numGoroutines := 10
+	keysPerGoroutine := 10
+
+	// Pre-fill the tree
+	for i := 0; i < numGoroutines; i++ {
+		for j := 0; j < keysPerGoroutine; j++ {
+			key := fmt.Sprintf("key%02d-%d", j, i)
+			bst.Put([]byte(key), []byte(fmt.Sprintf("value-%d", i)))
+		}
+	}
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(goroutineID int) {
+			defer wg.Done()
+			for j := 0; j < keysPerGoroutine; j++ {
+				key := fmt.Sprintf("key%02d-%d", j, goroutineID)
+				bst.Delete([]byte(key))
+				// Verify that the key has been deleted
+				val := bst.Get([]byte(key))
+				if val != nil {
+					t.Fatalf("Expected key %s to be deleted", key)
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+func TestBST_DuplicateKeys(t *testing.T) {
+	bst := New()
+	bst.Put([]byte("key"), []byte("value1"))
+	bst.Put([]byte("key"), []byte("value2"))
+
+	key := bst.Get([]byte("key"))
+	if len(key.Values) != 2 {
+		t.Fatalf("Expected 2 values, got %d", len(key.Values))
+	}
+}
+
+func TestBST_EmptyKeyValue(t *testing.T) {
+	bst := New()
+	bst.Put([]byte(""), []byte("value"))
+	key := bst.Get([]byte(""))
+	if key == nil {
+		t.Fatal("Expected to find empty key")
+	}
+}
+
+func TestBST_SpecialCharacters(t *testing.T) {
+	bst := New()
+	specialKeys := []string{"key@#", "key space", "key:colon", "key#hash"}
+	for _, k := range specialKeys {
+		bst.Put([]byte(k), []byte("value"))
+	}
+
+	for _, k := range specialKeys {
+		key := bst.Get([]byte(k))
+		if key == nil {
+			t.Fatalf("Expected to find key: %s", k)
+		}
+	}
+}
+
+func TestBST_ConcurrentDeletes(t *testing.T) {
+	bst := New()
+	bst.Put([]byte("key"), []byte("value"))
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			bst.Delete([]byte("key"))
+		}()
+	}
+
+	wg.Wait()
+	if bst.Get([]byte("key")) != nil {
+		t.Fatal("Key should have been deleted")
+	}
+}
+
+func TestBST_GetAfterDelete(t *testing.T) {
+	bst := New()
+	bst.Put([]byte("key"), []byte("value"))
+	bst.Delete([]byte("key"))
+
+	if bst.Get([]byte("key")) != nil {
+		t.Fatal("Expected key to be deleted")
+	}
+}
+
+func TestBST_RangeNoMatches(t *testing.T) {
+	bst := New()
+	bst.Put([]byte("key01"), []byte("value"))
+	bst.Put([]byte("key02"), []byte("value"))
+
+	keys := bst.Range([]byte("key03"), []byte("key04"))
+	if len(keys) != 0 {
+		t.Fatal("Expected no keys in range")
+	}
+}
+
+func TestBST_AllKeysRemoved(t *testing.T) {
+	bst := New()
+	for i := 0; i < 10; i++ {
+		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte("value"))
+	}
+
+	for i := 0; i < 10; i++ {
+		bst.Delete([]byte(fmt.Sprintf("key%02d", i)))
+	}
+
+	if bst.Get([]byte("key00")) != nil {
+		t.Fatal("Expected all keys to be deleted")
+	}
+}
+
+// Benchmarking
+
+var (
+	numGoroutines    = flag.Int("numGoroutines", 10, "Number of goroutines to use for the benchmark")
+	keysPerGoroutine = flag.Int("keysPerGoroutine", 1_000_000, "Number of keys per goroutine")
+)
+
+// BenchmarkBST_ConcurrentPut benchmarks the concurrent Put operation.
+func BenchmarkBST_ConcurrentPut(b *testing.B) {
+	flag.Parse() // Parse command line flags
+
+	b.Run(fmt.Sprintf("ConcurrentPut-%dGoroutines-%dKeys", *numGoroutines, *keysPerGoroutine), func(b *testing.B) {
+		b.ResetTimer()
+		var wg sync.WaitGroup
+		bst := New()
+
+		for i := 0; i < *numGoroutines; i++ {
+			wg.Add(1)
+			go func(goroutineID int) {
+				defer wg.Done()
+				for j := 0; j < *keysPerGoroutine; j++ {
+					key := []byte(fmt.Sprintf("key%09d-%d", j, goroutineID))
+					value := []byte(fmt.Sprintf("value-%d", goroutineID))
+					bst.Put(key, value)
+				}
+			}(i)
+		}
+
+		wg.Wait()
+	})
 }

@@ -33,13 +33,14 @@ type Node struct {
 	Key   *Key           // Key of the node
 	Left  unsafe.Pointer // Left node
 	Right unsafe.Pointer // Right node
+	Latch sync.Mutex     // Mutex for this node, mainly for deletion
 }
 
 // Key is the key for the binary search tree
 type Key struct {
-	K      []byte   // Key value
-	Values [][]byte // Values within the key
-	Latch  *sync.Mutex
+	K      []byte      // Key value
+	Values [][]byte    // Values within the key
+	Latch  *sync.Mutex // Key latch for changing values
 }
 
 // New creates a new BST
@@ -49,7 +50,7 @@ func New() *BST {
 
 // Put adds a new key to BST or append value to existing key
 func (bst *BST) Put(key, value []byte) {
-	newNode := &Node{Key: &Key{K: key, Values: [][]byte{value}, Latch: &sync.Mutex{}}}
+	newNode := &Node{Key: &Key{K: key, Values: [][]byte{value}, Latch: &sync.Mutex{}}, Latch: sync.Mutex{}}
 	for {
 		root := atomic.LoadPointer(&bst.Root)
 		if root == nil {
@@ -160,6 +161,9 @@ func (bst *BST) delete(node *Node, key []byte) *Node {
 	if node == nil {
 		return nil
 	}
+
+	node.Latch.Lock()         // Lock this node
+	defer node.Latch.Unlock() // Ensure it gets unlocked
 
 	if bytes.Compare(key, node.Key.K) < 0 {
 		node.Left = unsafe.Pointer(bst.delete((*Node)(node.Left), key))
@@ -373,6 +377,7 @@ func (bst *BST) nGet(node *Node, key []byte, keys *[]*Key) {
 	bst.nGet((*Node)(node.Right), key, keys)
 }
 
+// NodePos is the position of the node in the tree, either left, right, or root
 type NodePos int
 
 const (
@@ -387,6 +392,7 @@ func (bst *BST) Print() {
 	bst.print((*Node)(root), Root)
 }
 
+// print displays the BST
 func (bst *BST) print(node *Node, pos NodePos) {
 	if node == nil {
 		return
