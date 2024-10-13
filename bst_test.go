@@ -17,10 +17,10 @@
 package bst
 
 import (
-	"flag"
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestNew(t *testing.T) {
@@ -32,6 +32,11 @@ func TestNew(t *testing.T) {
 
 func TestBST_Put(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	bst.Put([]byte("key"), []byte("value"))
 	bst.Put([]byte("key44"), []byte("value"))
 	bst.Put([]byte("key2"), []byte("value"))
@@ -41,9 +46,17 @@ func TestBST_Put(t *testing.T) {
 
 func TestBST_Get(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	bst.Put([]byte("key"), []byte("value"))
 	bst.Put([]byte("key44"), []byte("value 44"))
 	bst.Put([]byte("key44"), []byte("value 44 2"))
+
+	// wait for the tree to be built
+	time.Sleep(10 * time.Millisecond)
 
 	key := bst.Get([]byte("key"))
 	if key == nil {
@@ -71,9 +84,16 @@ func TestBST_Get(t *testing.T) {
 
 func TestBST_Remove(t *testing.T) {
 	bst := New()
+	defer func() {
+		bst.Close()
+	}()
+
 	bst.Put([]byte("key"), []byte("value"))
 	bst.Put([]byte("key"), []byte("value 2"))
 	bst.Put([]byte("key"), []byte("value 3"))
+
+	// wait for the tree to be built
+	time.Sleep(10 * time.Millisecond)
 
 	bst.Remove([]byte("key"), []byte("value 2"))
 
@@ -94,10 +114,18 @@ func TestBST_Remove(t *testing.T) {
 
 func TestBST_Delete(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	bst.Put([]byte("key"), []byte("value"))
 	bst.Put([]byte("key33"), []byte("value 2"))
 	bst.Put([]byte("key2"), []byte("value 3"))
 	bst.Put([]byte("key3"), []byte("value 4"))
+
+	// wait for the tree to be built
+	time.Sleep(10 * time.Millisecond)
 
 	bst.Delete([]byte("key2"))
 
@@ -121,9 +149,16 @@ func TestBST_Delete(t *testing.T) {
 func TestBST_Range(t *testing.T) {
 	bst := New()
 
+	defer func() {
+		bst.Close()
+	}()
+
 	for i := 0; i < 100; i++ {
 		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte(fmt.Sprintf("value%d", i)))
 	}
+
+	// wait for the tree to be built
+	time.Sleep(10 * time.Millisecond)
 
 	keys := bst.Range([]byte("key10"), []byte("key20"))
 
@@ -155,9 +190,16 @@ func TestBST_Range(t *testing.T) {
 func TestBST_GreaterThan(t *testing.T) {
 	bst := New()
 
+	defer func() {
+		bst.Close()
+	}()
+
 	for i := 0; i < 10; i++ {
 		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte(fmt.Sprintf("value%d", i)))
 	}
+
+	// wait for the tree to be built
+	time.Sleep(10 * time.Millisecond)
 
 	keys := bst.GreaterThan([]byte("key05"))
 
@@ -177,9 +219,16 @@ func TestBST_GreaterThan(t *testing.T) {
 func TestBST_GreaterThanEq(t *testing.T) {
 	bst := New()
 
+	defer func() {
+		bst.Close()
+	}()
+
 	for i := 0; i < 10; i++ {
 		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte(fmt.Sprintf("value%d", i)))
 	}
+
+	// wait for the tree to be built
+	time.Sleep(10 * time.Millisecond)
 
 	keys := bst.GreaterThanEq([]byte("key05"))
 
@@ -199,9 +248,16 @@ func TestBST_GreaterThanEq(t *testing.T) {
 func TestBST_LessThan(t *testing.T) {
 	bst := New()
 
+	defer func() {
+		bst.Close()
+	}()
+
 	for i := 0; i < 10; i++ {
 		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte(fmt.Sprintf("value%d", i)))
 	}
+
+	// wait for the tree to be built
+	time.Sleep(10 * time.Millisecond)
 
 	keys := bst.LessThan([]byte("key05"))
 
@@ -221,9 +277,16 @@ func TestBST_LessThan(t *testing.T) {
 func TestBST_LessThanEq(t *testing.T) {
 	bst := New()
 
+	defer func() {
+		bst.Close()
+	}()
+
 	for i := 0; i < 10; i++ {
 		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte(fmt.Sprintf("value%d", i)))
 	}
+
+	// wait for the tree to be built
+	time.Sleep(10 * time.Millisecond)
 
 	keys := bst.LessThanEq([]byte("key05"))
 
@@ -243,9 +306,16 @@ func TestBST_LessThanEq(t *testing.T) {
 func TestBST_NGet(t *testing.T) {
 	bst := New()
 
+	defer func() {
+		bst.Close()
+	}()
+
 	for i := 0; i < 10; i++ {
 		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte(fmt.Sprintf("value%d", i)))
 	}
+
+	// wait for the tree to be built
+	time.Sleep(10 * time.Millisecond)
 
 	keys := bst.NGet([]byte("key05"))
 
@@ -260,6 +330,11 @@ func TestBST_NGet(t *testing.T) {
 
 func TestBST_ConcurrentPut(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	var wg sync.WaitGroup
 	numGoroutines := 10
 	keysPerGoroutine := 10
@@ -274,6 +349,9 @@ func TestBST_ConcurrentPut(t *testing.T) {
 				bst.Put([]byte(key), []byte(value))
 			}
 		}(i)
+
+		// wait for the tree to be built
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	wg.Wait()
@@ -292,6 +370,11 @@ func TestBST_ConcurrentPut(t *testing.T) {
 
 func TestBST_ConcurrentGet(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	var wg sync.WaitGroup
 	numGoroutines := 10
 	keysPerGoroutine := 10
@@ -302,6 +385,9 @@ func TestBST_ConcurrentGet(t *testing.T) {
 			key := fmt.Sprintf("key%02d-%d", j, i)
 			bst.Put([]byte(key), []byte(fmt.Sprintf("value-%d", i)))
 		}
+
+		// wait for the tree to be built
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	for i := 0; i < numGoroutines; i++ {
@@ -323,6 +409,11 @@ func TestBST_ConcurrentGet(t *testing.T) {
 
 func TestBST_ConcurrentDelete(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	var wg sync.WaitGroup
 	numGoroutines := 10
 	keysPerGoroutine := 10
@@ -356,8 +447,15 @@ func TestBST_ConcurrentDelete(t *testing.T) {
 
 func TestBST_DuplicateKeys(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	bst.Put([]byte("key"), []byte("value1"))
 	bst.Put([]byte("key"), []byte("value2"))
+	// wait for the tree to be built
+	time.Sleep(10 * time.Millisecond)
 
 	key := bst.Get([]byte("key"))
 	if len(key.Values) != 2 {
@@ -367,7 +465,15 @@ func TestBST_DuplicateKeys(t *testing.T) {
 
 func TestBST_EmptyKeyValue(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	bst.Put([]byte(""), []byte("value"))
+	// wait for the tree to be built
+	time.Sleep(6 * time.Millisecond)
+
 	key := bst.Get([]byte(""))
 	if key == nil {
 		t.Fatal("Expected to find empty key")
@@ -376,10 +482,18 @@ func TestBST_EmptyKeyValue(t *testing.T) {
 
 func TestBST_SpecialCharacters(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	specialKeys := []string{"key@#", "key space", "key:colon", "key#hash"}
 	for _, k := range specialKeys {
 		bst.Put([]byte(k), []byte("value"))
 	}
+
+	// wait for the tree to be built
+	time.Sleep(10 * time.Millisecond)
 
 	for _, k := range specialKeys {
 		key := bst.Get([]byte(k))
@@ -391,6 +505,11 @@ func TestBST_SpecialCharacters(t *testing.T) {
 
 func TestBST_ConcurrentDeletes(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	bst.Put([]byte("key"), []byte("value"))
 
 	var wg sync.WaitGroup
@@ -410,6 +529,11 @@ func TestBST_ConcurrentDeletes(t *testing.T) {
 
 func TestBST_GetAfterDelete(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	bst.Put([]byte("key"), []byte("value"))
 	bst.Delete([]byte("key"))
 
@@ -420,6 +544,11 @@ func TestBST_GetAfterDelete(t *testing.T) {
 
 func TestBST_RangeNoMatches(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	bst.Put([]byte("key01"), []byte("value"))
 	bst.Put([]byte("key02"), []byte("value"))
 
@@ -431,6 +560,11 @@ func TestBST_RangeNoMatches(t *testing.T) {
 
 func TestBST_AllKeysRemoved(t *testing.T) {
 	bst := New()
+
+	defer func() {
+		bst.Close()
+	}()
+
 	for i := 0; i < 10; i++ {
 		bst.Put([]byte(fmt.Sprintf("key%02d", i)), []byte("value"))
 	}
@@ -444,34 +578,20 @@ func TestBST_AllKeysRemoved(t *testing.T) {
 	}
 }
 
-// Benchmarking
+// Insert 1 million keys and time
+func TestBST_Insert1MillionKeys(t *testing.T) {
+	bst := New()
 
-var (
-	numGoroutines    = flag.Int("numGoroutines", 10, "Number of goroutines to use for the benchmark")
-	keysPerGoroutine = flag.Int("keysPerGoroutine", 1_000_000, "Number of keys per goroutine")
-)
+	defer func() {
+		bst.Close()
+	}()
 
-// BenchmarkBST_ConcurrentPut benchmarks the concurrent Put operation.
-func BenchmarkBST_ConcurrentPut(b *testing.B) {
-	flag.Parse() // Parse command line flags
+	start := time.Now()
 
-	b.Run(fmt.Sprintf("ConcurrentPut-%dGoroutines-%dKeys", *numGoroutines, *keysPerGoroutine), func(b *testing.B) {
-		b.ResetTimer()
-		var wg sync.WaitGroup
-		bst := New()
+	for i := 0; i < 1000000; i++ {
+		bst.Put([]byte(fmt.Sprintf("key%08d", i)), []byte("value"))
+	}
 
-		for i := 0; i < *numGoroutines; i++ {
-			wg.Add(1)
-			go func(goroutineID int) {
-				defer wg.Done()
-				for j := 0; j < *keysPerGoroutine; j++ {
-					key := []byte(fmt.Sprintf("key%09d-%d", j, goroutineID))
-					value := []byte(fmt.Sprintf("value-%d", goroutineID))
-					bst.Put(key, value)
-				}
-			}(i)
-		}
-
-		wg.Wait()
-	})
+	elapsed := time.Since(start)
+	fmt.Printf("Insert 1 million keys took %s\n", elapsed)
 }

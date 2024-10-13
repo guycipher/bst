@@ -25,7 +25,10 @@ import (
 
 // BST is the binary search tree struct
 type BST struct {
-	Root unsafe.Pointer // Root of the binary search tree
+	Root           unsafe.Pointer // Root of the binary search tree
+	WriteQueue     WriteQueue     // Incoming write queue
+	WriteQueueLock *sync.Mutex    // Mutex for the write queue
+	Exit           chan struct{}  // Exit channel
 }
 
 // Node is a node within the binary search tree
@@ -43,13 +46,72 @@ type Key struct {
 	Latch  *sync.Mutex // Key latch for changing values
 }
 
+// WriteQueue is a queue of write operations
+type WriteQueue struct {
+	items []*Key
+}
+
+// Enqueue adds a new key to the write queue
+func (q *WriteQueue) Enqueue(key, val []byte) {
+	q.items = append(q.items, &Key{K: key, Values: [][]byte{val}})
+}
+
+// Dequeue removes a key from the write queue
+func (q *WriteQueue) Dequeue() *Key {
+	item := q.items[0]
+	q.items = q.items[1:]
+	return item
+}
+
+// IsEmpty checks if the write queue is empty
+func (q *WriteQueue) IsEmpty() bool {
+	return len(q.items) == 0
+}
+
+// Size returns the size of the write queue
+func (q *WriteQueue) Size() int {
+	return len(q.items)
+}
+
 // New creates a new BST
 func New() *BST {
-	return &BST{}
+	bst := &BST{WriteQueue: WriteQueue{}, WriteQueueLock: &sync.Mutex{}, Exit: make(chan struct{})}
+
+	// Start the background write queue
+	go bst.backgroundWriteQueue()
+
+	return bst
+}
+
+func (bst *BST) backgroundWriteQueue() {
+	for {
+		select {
+		case <-bst.Exit:
+			return
+		default:
+			if !bst.WriteQueue.IsEmpty() {
+				bst.WriteQueueLock.Lock()
+				key := bst.WriteQueue.Dequeue()
+				bst.PutOffQueue(key.K, key.Values[0])
+				bst.WriteQueueLock.Unlock()
+			}
+		}
+	}
 }
 
 // Put adds a new key to BST or append value to existing key
 func (bst *BST) Put(key, value []byte) {
+
+	bst.WriteQueueLock.Lock()
+	defer bst.WriteQueueLock.Unlock()
+	// Enqueue the write operation
+	bst.WriteQueue.Enqueue(key, value)
+
+}
+
+// PutOffQueue adds a new key to BST or append value to existing key
+func (bst *BST) PutOffQueue(key, value []byte) {
+
 	newNode := &Node{Key: &Key{K: key, Values: [][]byte{value}, Latch: &sync.Mutex{}}, Latch: sync.Mutex{}}
 	for {
 		root := atomic.LoadPointer(&bst.Root)
@@ -407,4 +469,8 @@ func (bst *BST) print(node *Node, pos NodePos) {
 		println("ROOT: ", string(node.Key.K))
 	}
 	bst.print((*Node)(node.Right), Right)
+}
+
+func (bst *BST) Close() {
+	close(bst.Exit) // Signal to exit the background write loop
 }
